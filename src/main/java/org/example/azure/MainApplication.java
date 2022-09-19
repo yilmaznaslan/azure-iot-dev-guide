@@ -18,23 +18,22 @@ import java.nio.charset.StandardCharsets;
 
 public class MainApplication {
 
-    String AZURE_RESOURCE_GROUP_NAME = "yilmaz_ResourceGroup";
-    String IOT_HUB_NAME = "yilmaztestiothub";
-    public static String IOT_HUB_CONNECTION_STRING = "";
+    public static String IOT_HUB_NAME = "yilmaztestiothub";
+    public static String IOT_HUB_CONNECTION_STRING = "HostName=iotbugtesthub.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=CDx25gJmYGkrdla1AcwQbw9c5zCWOLeBxXo2os+IKGU=";
     public static String DEVICE_PREFIX = "evehicle";
     public static Integer DEVICE_COUNT = 10;
 
     public static String CONTAINER_NAME = "devicecontainer";
     public static String BLOB_NAME = "devices.txt";
     public static String STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=storagetestyilmaz;AccountKey=vVAMzuVpSLuy0lvD+MitG4P8bXLpba77/S+jSGD6Ta9eX2CI9g0a3CpR2XERyR3axImnb7GWlHDU+AStaFD28A==;EndpointSuffix=core.windows.net";
-    public String CONTAINER_SAS_URI = "";
+    public static String CONTAINER_SAS_URI = "https://storagetestyilmaz.blob.core.windows.net/devicecontainer?sp=r&st=2022-09-19T22:48:40Z&se=2022-09-20T06:48:40Z&spr=https&sv=2021-06-08&sr=c&sig=TV70sbH4pyIH2h1x9x4gk9uQc0cpuQW05iq89E5GVv0%3D";
 
     private static final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     private static Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) throws Exception {
-        createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT);
-        //importDevicesFromBlobToIoTHub(IOT_HUB_NAME);
+        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT);
+        importDevicesFromBlobToIoTHub(IOT_HUB_NAME);
     }
 
     private static void createDevicesInBlob(String devicePrefix, int deviceCount) throws Exception {
@@ -74,7 +73,7 @@ public class MainApplication {
         importBlob.upload(stream, blobToImport.length);
     }
 
-    private void importDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
+    private static void  importDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
         LOGGER.info("Importing devices from blob to iothub : {}", iotHubName);
         CloudStorageAccount storageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
         CloudBlobClient blobClient = storageAccount.createCloudBlobClient();

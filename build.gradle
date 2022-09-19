@@ -16,6 +16,10 @@ dependencies {
     implementation 'com.microsoft.azure.sdk.iot:iot-service-client:2.1.0'
     implementation 'com.microsoft.azure:azure-storage:8.0.0'
     implementation 'org.slf4j:slf4j-api:1.6.1'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+    testImplementation 'org.slf4j:slf4j-simple:1.6.1'
+
 }
 test {
     useJUnitPlatform()
