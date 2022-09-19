@@ -1,66 +1,108 @@
 package org.example.azure;
 
-import com.azure.core.credential.TokenCredential;
-import com.azure.core.http.policy.HttpLogDetailLevel;
-import com.azure.core.management.AzureEnvironment;
-import com.azure.core.management.profile.AzureProfile;
-import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.azure.resourcemanager.AzureResourceManager;
-import com.azure.resourcemanager.iothub.IotHubManager;
-import io.dropwizard.Application;
-import io.dropwizard.setup.Environment;
-import org.example.azure.config.DefaultConfiguration;
-import org.example.azure.resourceManager.DefaultResource;
-import org.example.azure.resources.iotHub.devicemanagement.business.DeviceManagementBA;
-import org.example.azure.resources.iotHub.devicemanagement.service.DeviceManagementService;
-import org.example.azure.resources.iotHub.resourceManager.business.IoTHubBA;
-import org.example.azure.resources.iotHub.resourceManager.service.IoTHubResource;
-import org.example.azure.resources.storage.business.StorageBA;
-import org.example.azure.resources.storage.service.StorageResource;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.microsoft.azure.sdk.iot.service.auth.AuthenticationMechanism;
+import com.microsoft.azure.sdk.iot.service.registry.*;
+import com.microsoft.azure.storage.CloudStorageAccount;
+import com.microsoft.azure.storage.blob.CloudBlobClient;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
+import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MainApplication extends Application<DefaultConfiguration> {
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
+
+public class MainApplication {
+
+    String AZURE_RESOURCE_GROUP_NAME = "yilmaz_ResourceGroup";
+    String IOT_HUB_NAME = "yilmaztestiothub";
+    public static String IOT_HUB_CONNECTION_STRING = "";
+    public static String DEVICE_PREFIX = "evehicle";
+    public static Integer DEVICE_COUNT = 10;
+
+    public static String CONTAINER_NAME = "devicecontainer";
+    public static String BLOB_NAME = "devices.txt";
+    public static String STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=storagetestyilmaz;AccountKey=vVAMzuVpSLuy0lvD+MitG4P8bXLpba77/S+jSGD6Ta9eX2CI9g0a3CpR2XERyR3axImnb7GWlHDU+AStaFD28A==;EndpointSuffix=core.windows.net";
+    public String CONTAINER_SAS_URI = "";
+
+    private static final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     private static Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) throws Exception {
-        new MainApplication().run(args);
+        createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT);
+        //importDevicesFromBlobToIoTHub(IOT_HUB_NAME);
     }
 
-
-    @Override
-    public void run(DefaultConfiguration configuration, Environment environment) throws Exception {
-
-        final AzureProfile profile = new AzureProfile(AzureEnvironment.AZURE);
-        final TokenCredential credential = new DefaultAzureCredentialBuilder()
-                .authorityHost(profile.getEnvironment().getActiveDirectoryEndpoint())
-                .build();
+    private static void createDevicesInBlob(String devicePrefix, int deviceCount) throws Exception {
+        LOGGER.debug("Starting to create devices in blob. ");
 
 
-        AzureResourceManager azureResourceManager = AzureResourceManager
-                .configure()
-                .withLogLevel(HttpLogDetailLevel.BASIC)
-                .authenticate(credential, profile)
-                .withDefaultSubscription();
+        // Creating the list of devices to be submitted for import
+        StringBuilder devicesToImport = new StringBuilder();
+        for (int i = 0; i < deviceCount; i++) {
+            String deviceId = devicePrefix + "_" + i;
+            Device device = new Device(deviceId);
+            AuthenticationMechanism authentication = new AuthenticationMechanism(device.getSymmetricKey());
 
-        IotHubManager iotHubManager = IotHubManager.authenticate(credential, profile);
+            ExportImportDevice deviceToAdd = new ExportImportDevice();
+            deviceToAdd.setId(deviceId);
+            deviceToAdd.setAuthentication(authentication);
+            deviceToAdd.setStatus(DeviceStatus.Enabled);
+            deviceToAdd.setImportMode(ImportMode.CreateOrUpdate);
 
-        String resourceGroupName = configuration.getResourceGroupName();
-        IoTHubBA ioTHubBA = new IoTHubBA(resourceGroupName, credential, azureResourceManager, profile);
-        StorageBA storageBA = new StorageBA(resourceGroupName, azureResourceManager);
-        DeviceManagementBA deviceManagementBA = new DeviceManagementBA(iotHubManager, ioTHubBA, storageBA, resourceGroupName);
+            devicesToImport.append(gson.toJson(deviceToAdd));
 
+            if (i < deviceCount - 1) {
+                devicesToImport.append("\r\n");
+            }
+        }
 
-        final DefaultResource defaultResource = new DefaultResource(azureResourceManager);
-        final IoTHubResource ioTHubResource = new IoTHubResource(ioTHubBA);
-        final DeviceManagementService deviceManagementService = new DeviceManagementService(deviceManagementBA);
-        StorageResource storageResource = new StorageResource(storageBA);
+        byte[] blobToImport = devicesToImport.toString().getBytes(StandardCharsets.UTF_8);
 
-        environment.jersey().register(defaultResource);
-        environment.jersey().register(ioTHubResource);
-        environment.jersey().register(deviceManagementService);
-        environment.jersey().register(storageResource);
+        // Creating the Azure storage blob and uploading the serialized string of devices
+        LOGGER.info("Uploading " + blobToImport.length + " bytes into Azure storage.");
+        InputStream stream = new ByteArrayInputStream(blobToImport);
+        CloudStorageAccount cloudStorageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
+        CloudBlobClient blobClient = cloudStorageAccount.createCloudBlobClient();
+        CloudBlobContainer container = blobClient.getContainerReference(CONTAINER_NAME);
+        CloudBlockBlob importBlob = container.getBlockBlobReference(BLOB_NAME);
+        importBlob.deleteIfExists();
+        importBlob.upload(stream, blobToImport.length);
+    }
+
+    private void importDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
+        LOGGER.info("Importing devices from blob to iothub : {}", iotHubName);
+        CloudStorageAccount storageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
+        CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
+        CloudBlobContainer container = blobClient.getContainerReference(CONTAINER_NAME);
+        String containerSasUri = CONTAINER_SAS_URI;
+
+        // Starting the import job
+        String iotHubConnectionString = IOT_HUB_CONNECTION_STRING;
+        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
+        RegistryJob importJob = registryClient.importDevices(containerSasUri, containerSasUri);
+
+        // Waiting for the import job to complete
+        while (true) {
+            importJob = registryClient.getJob(importJob.getJobId());
+            if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED
+                    || importJob.getStatus() == RegistryJob.JobStatus.FAILED) {
+                break;
+            }
+            Thread.sleep(500);
+        }
+
+        // Checking the result of the import job
+        if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED) {
+            System.out.println("Import job completed. The new devices are now added to the hub.");
+        } else {
+            System.out.println("Import job failed. Failure reason: " + importJob.getFailureReason());
+        }
 
     }
+
 }

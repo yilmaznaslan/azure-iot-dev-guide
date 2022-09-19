@@ -12,43 +12,11 @@ repositories {
 }
 
 dependencies {
-
-    // https://mvnrepository.com/artifact/io.dropwizard/dropwizard-core
-    implementation 'io.dropwizard:dropwizard-core:2.0.28'
-
-    implementation 'com.azure.resourcemanager:azure-resourcemanager:2.17.0'
-    implementation 'com.azure.resourcemanager:azure-resourcemanager-iothub:1.1.0' // used for managing iothub resources
-
-    // Used for TokenCredential Implementations
-    implementation 'com.azure:azure-identity:1.5.3'
-    //implementation 'com.azure:azure-core:1.30.0'
-
-    implementation 'com.azure:azure-core-management:1.7.0'
     implementation 'com.azure:azure-core-http-netty:1.1.0'
-
-    // https://mvnrepository.com/artifact/com.microsoft.azure.sdk.iot/iot-service-client
     implementation 'com.microsoft.azure.sdk.iot:iot-service-client:2.1.0'
-
-    // https://mvnrepository.com/artifact/com.microsoft.azure/azure-storage
     implementation 'com.microsoft.azure:azure-storage:8.0.0'
-
-    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
     implementation 'org.slf4j:slf4j-api:1.6.1'
-
-    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
-    //implementation 'org.slf4j:slf4j-simple:1.6.1'
-
-// https://mvnrepository.com/artifact/org.json/json
-    implementation 'org.json:json:20220320'
-
-// https://mvnrepository.com/artifact/commons-io/commons-io
-    implementation 'commons-io:commons-io:2.6'
-
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
-
 test {
     useJUnitPlatform()
 }
