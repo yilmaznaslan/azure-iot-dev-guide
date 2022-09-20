@@ -24,21 +24,21 @@ import java.util.EnumSet;
 public class MainApplication {
 
     // IoTHub constants
-    public static String IOT_HUB_NAME = "yilmaztestiothub";
-    public static String IOT_HUB_CONNECTION_STRING = "HostName=IoTHubForSmartMobility.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=9YE+/lLJlG0LuucU1PSzSJ79W2nvAXkG1epRgY5YgG8=";
+    public static String IOT_HUB_NAME = "REPLACE";
+    public static String IOT_HUB_CONNECTION_STRING = "REPLACE";
     public static String DEVICE_PREFIX = "evehicle";
     public static Integer DEVICE_COUNT = 5;
 
     // Storage account constants
     public static String CONTAINER_NAME = "devicecontainer";
     public static String BLOB_NAME = "devices.txt";
-    public static String STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=storagetestyilmaz;AccountKey=vVAMzuVpSLuy0lvD+MitG4P8bXLpba77/S+jSGD6Ta9eX2CI9g0a3CpR2XERyR3axImnb7GWlHDU+AStaFD28A==;EndpointSuffix=core.windows.net";
+    public static String STORAGE_CONNECTION_STRING = "REPLACE";
 
     private static final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     private static Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) throws Exception {
-        createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
+        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
         //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SAS);
         registerDevicesFromBlobToIoTHub(IOT_HUB_NAME);
     }
