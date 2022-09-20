@@ -21,16 +21,25 @@
       registerDevicesFromBlobToIoTHub(IOT_HUB_NAME);
    }
    ````
-   
+   After running this command a file called `devices.txt` will be created in the container. Below is `devices.txt` when the authentication type is set to SELF_SIGNED
+
+   ````
+   {"id":"evehicle_0","importMode":"createOrUpdate","status":"Enabled","authentication":{"thumbprint":{"primaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521","secondaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521"},"type":"SELF_SIGNED"}}
+   {"id":"evehicle_1","importMode":"createOrUpdate","status":"Enabled","authentication":{"thumbprint":{"primaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521","secondaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521"},"type":"SELF_SIGNED"}}
+   {"id":"evehicle_2","importMode":"createOrUpdate","status":"Enabled","authentication":{"thumbprint":{"primaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521","secondaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521"},"type":"SELF_SIGNED"}}
+   {"id":"evehicle_3","importMode":"createOrUpdate","status":"Enabled","authentication":{"thumbprint":{"primaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521","secondaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521"},"type":"SELF_SIGNED"}}
+   {"id":"evehicle_4","importMode":"createOrUpdate","status":"Enabled","authentication":{"thumbprint":{"primaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521","secondaryThumbprint":"DE89B7BBD215E7E47ECD372F61205712D71DD521"},"type":"SELF_SIGNED"}}
+   ````
+
 4. In the created container, read the `importErrors.log`. A sample of the `importErrors.log` is below;
 
-```
+   ```
    {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_0\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
    {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_1\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
    {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_2\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
    {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_3\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
    {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_4\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
-```
+   ```
 
 ## How to fix the bug
 By changing the `com.microsoft.azure.sdk.iot.service.auth.AuthenticationType.SELF_SIGNED` to `com.microsoft.azure.sdk.iot.service.auth.AuthenticationType.selfSigned` is fixing the problem.
