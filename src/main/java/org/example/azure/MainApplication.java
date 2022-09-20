@@ -3,6 +3,7 @@ package org.example.azure;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.microsoft.azure.sdk.iot.service.auth.AuthenticationMechanism;
+import com.microsoft.azure.sdk.iot.service.auth.AuthenticationType;
 import com.microsoft.azure.sdk.iot.service.registry.*;
 import com.microsoft.azure.storage.CloudStorageAccount;
 import com.microsoft.azure.storage.blob.CloudBlobClient;
@@ -32,11 +33,11 @@ public class MainApplication {
     private static Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) throws Exception {
-        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT);
+        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, "SAS");
         importDevicesFromBlobToIoTHub(IOT_HUB_NAME);
     }
 
-    private static void createDevicesInBlob(String devicePrefix, int deviceCount) throws Exception {
+    private static void createDevicesInBlob(String devicePrefix, int deviceCount, String authenticationType) throws Exception {
         LOGGER.debug("Starting to create devices in blob. ");
 
 
@@ -45,11 +46,18 @@ public class MainApplication {
         for (int i = 0; i < deviceCount; i++) {
             String deviceId = devicePrefix + "_" + i;
             Device device = new Device(deviceId);
-            AuthenticationMechanism authentication = new AuthenticationMechanism(device.getSymmetricKey());
 
             ExportImportDevice deviceToAdd = new ExportImportDevice();
             deviceToAdd.setId(deviceId);
-            deviceToAdd.setAuthentication(authentication);
+            if (authenticationType.equals(AuthenticationType.SAS.name())){
+                AuthenticationMechanism authentication = new AuthenticationMechanism(device.getSymmetricKey());
+                deviceToAdd.setAuthentication(authentication);
+            } else if(authenticationType.equals(AuthenticationType.SELF_SIGNED.name())){
+                String primaryThumbprint = "DE89B7BBD215E7E47ECD372F61205712D71DD521";
+                String secondaryThumbprint = "DE89B7BBD215E7E47ECD372F61205712D71DD521";
+                AuthenticationMechanism authentication = new AuthenticationMechanism(primaryThumbprint, secondaryThumbprint);
+                deviceToAdd.setAuthentication(authentication);
+            }
             deviceToAdd.setStatus(DeviceStatus.Enabled);
             deviceToAdd.setImportMode(ImportMode.CreateOrUpdate);
 
