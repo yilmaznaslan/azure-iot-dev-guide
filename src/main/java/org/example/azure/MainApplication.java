@@ -112,4 +112,44 @@ public class MainApplication {
 
     }
 
+    private void registerDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
+        LOGGER.info("Registering devices from blob to iothub : {}", iotHubName);
+        // Creating Azure storage container and getting its URI
+        CloudStorageAccount storageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
+        CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
+        CloudBlobContainer container = blobClient.getContainerReference(CONTAINER_NAME);
+        String containerSasUri = getContainerSasUri(container);
+
+        // Starting the import job
+        String iotHubConnectionString = IOT_HUB_CONNECTION_STRING;
+        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
+        RegistryJob importJob = registryClient.importDevices(containerSasUri, containerSasUri);
+
+        // Waiting for the import job to complete
+        while (true) {
+            importJob = registryClient.getJob(importJob.getJobId());
+            if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED
+                    || importJob.getStatus() == RegistryJob.JobStatus.FAILED) {
+                break;
+            }
+            Thread.sleep(500);
+        }
+
+        // Checking the result of the import job
+        if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED) {
+            LOGGER.info("Import job completed. The new devices are now added to the hub.");
+        } else {
+            System.out.println("Import job failed. Failure reason: " + importJob.getFailureReason());
+        }
+
+        //Cleaning up the blob
+        /*
+        for (ListBlobItem blobItem : container.listBlobs()) {
+            if (blobItem instanceof CloudBlob) {
+                CloudBlob blob = (CloudBlockBlob) blobItem;
+                blob.deleteIfExists();
+            }
+        }
+         */
+    }
 }
