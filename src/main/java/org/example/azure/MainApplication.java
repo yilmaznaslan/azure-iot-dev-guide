@@ -6,38 +6,45 @@ import com.microsoft.azure.sdk.iot.service.auth.AuthenticationMechanism;
 import com.microsoft.azure.sdk.iot.service.auth.AuthenticationType;
 import com.microsoft.azure.sdk.iot.service.registry.*;
 import com.microsoft.azure.storage.CloudStorageAccount;
-import com.microsoft.azure.storage.blob.CloudBlobClient;
-import com.microsoft.azure.storage.blob.CloudBlobContainer;
-import com.microsoft.azure.storage.blob.CloudBlockBlob;
+import com.microsoft.azure.storage.StorageException;
+import com.microsoft.azure.storage.blob.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
+import java.util.EnumSet;
 
 
 public class MainApplication {
 
+    // IoTHub constants
     public static String IOT_HUB_NAME = "yilmaztestiothub";
-    public static String IOT_HUB_CONNECTION_STRING = "HostName=iotbugtesthub.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=CDx25gJmYGkrdla1AcwQbw9c5zCWOLeBxXo2os+IKGU=";
+    public static String IOT_HUB_CONNECTION_STRING = "HostName=IoTHubForSmartMobility.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=9YE+/lLJlG0LuucU1PSzSJ79W2nvAXkG1epRgY5YgG8=";
     public static String DEVICE_PREFIX = "evehicle";
-    public static Integer DEVICE_COUNT = 10;
+    public static Integer DEVICE_COUNT = 5;
 
+    // Storage account constants
     public static String CONTAINER_NAME = "devicecontainer";
+    public static String BLOB_SAS_URL = "https://storagetestyilmaz.blob.core.windows.net/?sv=2021-06-08&ss=bfqt&srt=c&sp=rwdlacupiytfx&se=2022-09-20T14:28:49Z&st=2022-09-20T06:28:49Z&spr=https&sig=JAnLBa6yWeD906pXUVhU50FluOJ9CKmZ1UqJFCcVbo8%3D";
     public static String BLOB_NAME = "devices.txt";
     public static String STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=storagetestyilmaz;AccountKey=vVAMzuVpSLuy0lvD+MitG4P8bXLpba77/S+jSGD6Ta9eX2CI9g0a3CpR2XERyR3axImnb7GWlHDU+AStaFD28A==;EndpointSuffix=core.windows.net";
-    public static String CONTAINER_SAS_URI = "https://storagetestyilmaz.blob.core.windows.net/devicecontainer?sp=r&st=2022-09-19T22:48:40Z&se=2022-09-20T06:48:40Z&spr=https&sv=2021-06-08&sr=c&sig=TV70sbH4pyIH2h1x9x4gk9uQc0cpuQW05iq89E5GVv0%3D";
 
     private static final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     private static Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) throws Exception {
-        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, "SAS");
-        importDevicesFromBlobToIoTHub(IOT_HUB_NAME);
+        // createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
+        // createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SAS);
+        registerDevicesFromBlobToIoTHub(IOT_HUB_NAME);
     }
 
-    private static void createDevicesInBlob(String devicePrefix, int deviceCount, String authenticationType) throws Exception {
+    private static void createDevicesInBlob(String devicePrefix, int deviceCount, AuthenticationType authenticationType) throws Exception {
         LOGGER.debug("Starting to create devices in blob. ");
 
 
@@ -49,10 +56,10 @@ public class MainApplication {
 
             ExportImportDevice deviceToAdd = new ExportImportDevice();
             deviceToAdd.setId(deviceId);
-            if (authenticationType.equals(AuthenticationType.SAS.name())){
+            if (authenticationType.equals(AuthenticationType.SAS)){
                 AuthenticationMechanism authentication = new AuthenticationMechanism(device.getSymmetricKey());
                 deviceToAdd.setAuthentication(authentication);
-            } else if(authenticationType.equals(AuthenticationType.SELF_SIGNED.name())){
+            } else if(authenticationType.equals(AuthenticationType.SELF_SIGNED)){
                 String primaryThumbprint = "DE89B7BBD215E7E47ECD372F61205712D71DD521";
                 String secondaryThumbprint = "DE89B7BBD215E7E47ECD372F61205712D71DD521";
                 AuthenticationMechanism authentication = new AuthenticationMechanism(primaryThumbprint, secondaryThumbprint);
@@ -81,49 +88,19 @@ public class MainApplication {
         importBlob.upload(stream, blobToImport.length);
     }
 
-    private static void  importDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
-        LOGGER.info("Importing devices from blob to iothub : {}", iotHubName);
-        CloudStorageAccount storageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
-        CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
-        CloudBlobContainer container = blobClient.getContainerReference(CONTAINER_NAME);
-        String containerSasUri = CONTAINER_SAS_URI;
-
-        // Starting the import job
-        String iotHubConnectionString = IOT_HUB_CONNECTION_STRING;
-        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
-        RegistryJob importJob = registryClient.importDevices(containerSasUri, containerSasUri);
-
-        // Waiting for the import job to complete
-        while (true) {
-            importJob = registryClient.getJob(importJob.getJobId());
-            if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED
-                    || importJob.getStatus() == RegistryJob.JobStatus.FAILED) {
-                break;
-            }
-            Thread.sleep(500);
-        }
-
-        // Checking the result of the import job
-        if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED) {
-            System.out.println("Import job completed. The new devices are now added to the hub.");
-        } else {
-            System.out.println("Import job failed. Failure reason: " + importJob.getFailureReason());
-        }
-
-    }
-
-    private void registerDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
+    private static void registerDevicesFromBlobToIoTHub(String iotHubName) throws Exception {
         LOGGER.info("Registering devices from blob to iothub : {}", iotHubName);
         // Creating Azure storage container and getting its URI
         CloudStorageAccount storageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
         CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
         CloudBlobContainer container = blobClient.getContainerReference(CONTAINER_NAME);
-        String containerSasUri = getContainerSasUri(container);
+        BLOB_SAS_URL = getContainerSasUri(container);
+        LOGGER.info("ContainerSasURI: " +  BLOB_SAS_URL);
 
         // Starting the import job
         String iotHubConnectionString = IOT_HUB_CONNECTION_STRING;
         RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
-        RegistryJob importJob = registryClient.importDevices(containerSasUri, containerSasUri);
+        RegistryJob importJob = registryClient.importDevices(BLOB_SAS_URL, BLOB_SAS_URL);
 
         // Waiting for the import job to complete
         while (true) {
@@ -142,14 +119,25 @@ public class MainApplication {
             System.out.println("Import job failed. Failure reason: " + importJob.getFailureReason());
         }
 
-        //Cleaning up the blob
-        /*
-        for (ListBlobItem blobItem : container.listBlobs()) {
-            if (blobItem instanceof CloudBlob) {
-                CloudBlob blob = (CloudBlockBlob) blobItem;
-                blob.deleteIfExists();
-            }
-        }
-         */
+    }
+
+    private static String getContainerSasUri(CloudBlobContainer container) throws InvalidKeyException, StorageException {
+        // Set the expiry time and permissions for the container.
+        // In this case no start time is specified, so the shared access signature becomes valid immediately.
+        SharedAccessBlobPolicy sasConstraints = new SharedAccessBlobPolicy();
+        Date expirationDate = Date.from(Instant.now().plus(Duration.ofDays(1)));
+        sasConstraints.setSharedAccessExpiryTime(expirationDate);
+        EnumSet<SharedAccessBlobPermissions> permissions = EnumSet.of(
+                SharedAccessBlobPermissions.WRITE,
+                SharedAccessBlobPermissions.LIST,
+                SharedAccessBlobPermissions.READ,
+                SharedAccessBlobPermissions.DELETE);
+        sasConstraints.setPermissions(permissions);
+
+        // Generate the shared access signature on the container, setting the constraints directly on the signature.
+        String sasContainerToken = container.generateSharedAccessSignature(sasConstraints, null);
+
+        // Return the URI string for the container, including the SAS token.
+        return container.getUri() + "?" + sasContainerToken;
     }
 }
