@@ -1,69 +1,55 @@
-# Azure IoT Development Guide
+# Bug Report
 
-## Prerequisites
-### 1. Create an Azure account 
+## How to reproduce the bug
 
-Create an azure account as explained in https://azure.microsoft.com/en-us/free/ by selecting either *free* or *pay-as-you-go* options.
-Remember *free* version is only valid for 12 Months.
+1. Create an IoTHub in azure
+   1. Replace the `IOT_HUB_NAME` with the created iothub name
+   2. Replace the `IOT_HUB_CONNECTION_STRING` with connection string of the creted Iot Hub ( iothub owner policy)
 
-### 2. Create a subscription
-If you don't have a subscription already create a subscription in https://portal.azure.com/#view/Microsoft_Azure_Billing/SubscriptionsBlade like below. Note the 'subscriptionId'
+2. Create a Storage Account in azure
+   1. Create a container in the storage account
+   2. Replace the `CONTAINER_NAME` in `MainApplication.java` with the name of container that is created.
+   3. Set the value of the `STORAGE_CONNECTION_STRING` in `MainApplication.java`with the connection string of the storage account.( Security+Network/AccessKeys)
 
-![](docs/azure_SubscriptionId.png)
+3. Create blob file `devices.txt` and register devices from blob to iot hub by setting the
 
+   In order to do that set the `main()` method as below and run `./gradlew run`.
+   ````  
+   public static void main(String[] args) throws Exception {
+      createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
+      //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SAS);
+      registerDevicesFromBlobToIoTHub(IOT_HUB_NAME);
+   }
+   ````
+   
+4. In the created container, read the `importErrors.log`. A sample of the `importErrors.log` is below;
 
-### 3. Register an app and get the clientId, tenantId
-After you sign up and sign in to azure portal, create an app in [Azure Active Directory](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps) as seen below. Note the *clientId* aka *applicationId* and *tenantId*.
+```
+   {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_0\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
+   {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_1\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
+   {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_2\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
+   {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_3\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
+   {"errorCode":400012,"errorStatus":"Invalid device format in line: {\"id\":\"evehicle_4\",\"importMode\":\"createOrUpdate\",\"status\":\"Enabled\",\"authentication\":{\"thumbprint\":{\"primaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\",\"secondaryThumbprint\":\"DE89B7BBD215E7E47ECD372F61205712D71DD521\"},\"type\":\"SELF_SIGNED\"}}. Error converting value \"SELF_SIGNED\" to type 'System.Nullable`1[Microsoft.Azure.Devices.Cloud.AuthenticationType]'. Path 'authentication.type', line 1, position 249."}
+```
 
-![](docs/azure_ClientIdTenantId.png)
+## How to fix the bug
+By changing the `com.microsoft.azure.sdk.iot.service.auth.AuthenticationType.SELF_SIGNED` to `com.microsoft.azure.sdk.iot.service.auth.AuthenticationType.selfSigned` is fixing the problem.
 
-### 4. Create a client secret for the created app
-Once the app is created, click to the app created(in our case it is called *test_app*) in [Azure Active Directory/App registrations](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps) and navigate to Certificates & Secrets. Create a client secret and note the *value*.
+One quick way to test it simply replacing the `"type":"SELF_SIGNED"` json attributes with `"type":"selfSigned"` in the `devices.txt`.
 
-![](docs/azure_ClientSecret.png)
-
-
-### 5. Create environment variables
-Create environment variables as below. Replace the values with the correct ones.
-
-````
-export AZURE_SUBSCRIPTION_ID='0077xxxxxxxxxxxxxxxxxxxxxxxxx'
-export AZURE_CLIENT_ID='0077xxxxxxxxxxxxxxxxxxxxxxxxx'
-export AZURE_TENANT_ID=''0077xxxxxxxxxxxxxxxxxxxxxxxxx'
-export AZURE_CLIENT_SECRET='0077xxxxxxxxxxxxxxxxxxxxxxxxx'
-````
+After editing the `devices.txt` you can run again the `main()`as below to try again to register the devices from blob to iothub
+```
+    public static void main(String[] args) throws Exception {
+        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
+        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SAS);
+        registerDevicesFromBlobToIoTHub(IOT_HUB_NAME);
+    }
+```
 
 
 
 ## How to run
-./gradlew run --args='server build/resources/main/serverConfig.yml'
+Run the command `./gradlew run ` in the project root directory
 
-`java -cp ":build/libs/all-in-one-jar-1.0-SNAPSHOT.jar" -jar build/libs/all-in-one-jar-1.0-SNAPSHOT.jar`
-
-java -cp ":build/classes/java/main" -jar build/libs/all-in-one-jar-1.0-SNAPSHOT.jar
-
-java -cp ":build/classes/java/main:build/libs/all-in-one-jar-1.0-SNAPSHOT.jar" com/maibornwolff/azure/iot/ResourceManager
-
-java -cp ":build/classes/java/main:build/libs/all-in-one-jar-1.0-SNAPSHOT.jar" com.maibornwolff.azure.iotHub.ResourceManager
-
-
-
-## IoT Hub
-
-### Device Management
-
-#### Device Identity Management
-
-##### Importing device identities to IoT HUB a.k.a Device Registry in Bulk
-
-
-
-
-##
-![Azure Role Assignment](https://docs.microsoft.com/en-us/azure/includes/role-based-access-control/media/scope-levels.png)
-
-
-
-## Refernece
-- https://docs.microsoft.com/en-us/java/api/overview/azure/resourcemanager-iothub-readme?view=azure-java-stable
-- https://www.inkoop.io/blog/how-to-get-azure-api-credentials/
+## Note 
+The bug is only happening if the authentication type is `SELF_SIGNED`. 

@@ -31,7 +31,6 @@ public class MainApplication {
 
     // Storage account constants
     public static String CONTAINER_NAME = "devicecontainer";
-    public static String BLOB_SAS_URL = "https://storagetestyilmaz.blob.core.windows.net/?sv=2021-06-08&ss=bfqt&srt=c&sp=rwdlacupiytfx&se=2022-09-20T14:28:49Z&st=2022-09-20T06:28:49Z&spr=https&sig=JAnLBa6yWeD906pXUVhU50FluOJ9CKmZ1UqJFCcVbo8%3D";
     public static String BLOB_NAME = "devices.txt";
     public static String STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=storagetestyilmaz;AccountKey=vVAMzuVpSLuy0lvD+MitG4P8bXLpba77/S+jSGD6Ta9eX2CI9g0a3CpR2XERyR3axImnb7GWlHDU+AStaFD28A==;EndpointSuffix=core.windows.net";
 
@@ -39,8 +38,8 @@ public class MainApplication {
     private static Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) throws Exception {
-        // createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
-        // createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SAS);
+        createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SELF_SIGNED);
+        //createDevicesInBlob(DEVICE_PREFIX, DEVICE_COUNT, AuthenticationType.SAS);
         registerDevicesFromBlobToIoTHub(IOT_HUB_NAME);
     }
 
@@ -94,13 +93,13 @@ public class MainApplication {
         CloudStorageAccount storageAccount = CloudStorageAccount.parse(STORAGE_CONNECTION_STRING);
         CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
         CloudBlobContainer container = blobClient.getContainerReference(CONTAINER_NAME);
-        BLOB_SAS_URL = getContainerSasUri(container);
-        LOGGER.info("ContainerSasURI: " +  BLOB_SAS_URL);
+        String blobSasUrl = getContainerSasUrl(container);
+        LOGGER.info("ContainerSasURI: " +  blobSasUrl);
 
         // Starting the import job
         String iotHubConnectionString = IOT_HUB_CONNECTION_STRING;
         RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
-        RegistryJob importJob = registryClient.importDevices(BLOB_SAS_URL, BLOB_SAS_URL);
+        RegistryJob importJob = registryClient.importDevices(blobSasUrl, blobSasUrl);
 
         // Waiting for the import job to complete
         while (true) {
@@ -121,7 +120,7 @@ public class MainApplication {
 
     }
 
-    private static String getContainerSasUri(CloudBlobContainer container) throws InvalidKeyException, StorageException {
+    private static String getContainerSasUrl(CloudBlobContainer container) throws InvalidKeyException, StorageException {
         // Set the expiry time and permissions for the container.
         // In this case no start time is specified, so the shared access signature becomes valid immediately.
         SharedAccessBlobPolicy sasConstraints = new SharedAccessBlobPolicy();
