@@ -9,7 +9,7 @@ import java.io.IOException;
 
 public class MainApplication {
 
-    public static String iotHubConnectionString = "HostName=smartMobilityIoTHubTest.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=7bXJhlZWSC2Wq6/mF+7M1fyqKI+0h7qneEwUfaF1ND4=";
+    public static String iotHubConnectionString = "REPLACE_ME";
 
     public static void main(String[] args) throws Exception {
         patchDeviceTwin("dishwasher_2");
