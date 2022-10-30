@@ -41,6 +41,14 @@ public class DeviceManagementService {
         return deviceManagementBA.getDeviceTwins();
     }
 
+    @GET
+    @Timed
+    @Path("/{deviceId}")
+    public Twin getDeviceTwinByDeviceId(@PathParam("deviceId") String deviceId,
+                                        @PathParam("iotHubName") String iotHubName) throws Exception {
+        return deviceManagementBA.getDeviceTwinByDeviceId(deviceId);
+    }
+
     @DELETE
     @Timed
     public void deleteDevices(@PathParam("iotHubName") String iotHubName) throws Exception {

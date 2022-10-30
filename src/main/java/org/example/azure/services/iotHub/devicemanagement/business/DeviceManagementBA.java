@@ -18,6 +18,7 @@ import org.example.azure.services.storage.business.StorageBA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -35,18 +36,22 @@ public class DeviceManagementBA {
     private static boolean excludeKeys = false;
     private static String importBlobName = "devices.txt";
 
-    private final String iotHubConnectionString;
+    private final QueryClient queryClient;
+    private final RegistryClient registryClient;
+    private final TwinClient twinClient;
     private final StorageBA storageBA;
     private final String GET_ALL_DEVICES = "SELECT * FROM devices";
+    private final String GET_DEVICE_BY_DEVICEID = "SELECT * FROM devices WHERE deviceId='%s'";
 
     public DeviceManagementBA(StorageBA storageBA, String iotHubConnectionString) {
         this.storageBA = storageBA;
-        this.iotHubConnectionString = iotHubConnectionString;
+        this.queryClient = new QueryClient(iotHubConnectionString);
+        this.registryClient = new RegistryClient(iotHubConnectionString);
+        this.twinClient = new TwinClient(iotHubConnectionString);
     }
 
     public HashMap<String, Twin> getDeviceTwins() throws IOException, IotHubException {
         LOGGER.info("Getting all device twins");
-        QueryClient queryClient = new QueryClient(iotHubConnectionString);
         TwinQueryResponse response = queryClient.queryTwins(GET_ALL_DEVICES);
         HashMap<String, Twin> twins = new HashMap<>();
         while (response.hasNext()) {
@@ -57,10 +62,20 @@ public class DeviceManagementBA {
         return twins;
     }
 
+    public Twin getDeviceTwinByDeviceId(String deviceId) throws IOException, IotHubException {
+        LOGGER.info("Getting deviceTwin: {}", deviceId);
+        LOGGER.info(String.format(GET_DEVICE_BY_DEVICEID, deviceId));
+        TwinQueryResponse response = queryClient.queryTwins(String.format(GET_DEVICE_BY_DEVICEID, deviceId));
+        if (response.hasNext()) {
+            Twin twin = response.next();
+            return twin;
+        }
+        throw new NotFoundException("Requested device not found");
+
+    }
 
     public void deleteDeviceTwins() throws IOException, IotHubException {
         HashMap<String, Twin> devices = getDeviceTwins();
-        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
         devices.forEach((k, v) -> {
             try {
                 registryClient.removeDevice(k);
@@ -71,9 +86,7 @@ public class DeviceManagementBA {
         });
     }
 
-
     public void patchDeviceTwin(String deviceId) throws IOException, IotHubException {
-        TwinClient twinClient = new TwinClient(iotHubConnectionString);
         Twin twin = twinClient.get(deviceId);
         TwinCollection twinCollection = twin.getTags();
         twinCollection.put("customerId", "null");
@@ -83,13 +96,12 @@ public class DeviceManagementBA {
     }
 
     public void registerSingleDevice(String deviceId) {
-        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
         Device device = new Device(deviceId);
 
         try {
             device = registryClient.addDevice(device);
-            System.out.println("Device created: " + device.getDeviceId());
-            System.out.println("Device key: " + device.getPrimaryKey());
+            LOGGER.info("Device created: " + device.getDeviceId());
+            LOGGER.info("Device key: " + device.getPrimaryKey());
             HashMap<String, String> tags = new HashMap<String, String>();
             tags.put("countery", "germany");
             patchDeviceTwin(device.getDeviceId());
@@ -101,8 +113,6 @@ public class DeviceManagementBA {
 
     public void getDevicesFromIotHubToBlob(String iotHubName) throws Exception {
         LOGGER.info("Exporting devices from IoTHub to blob");
-
-        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
         String containerSasUri = storageBA.getContainerSasUri();
         RegistryJob exportJob = registryClient.exportDevices(containerSasUri, excludeKeys);
 
@@ -116,9 +126,7 @@ public class DeviceManagementBA {
         LOGGER.info("The job for exporting devices from IoTHub to blob is completed");
 
         File importedDevicePath = new File(DeviceManagementBA.class.getClassLoader().getResource(relativePathForImportedDevices).getPath());
-        InputStream is = this.getClass()
-                .getClassLoader()
-                .getResourceAsStream(relativePathForImportedDevices);
+        InputStream is = this.getClass().getClassLoader().getResourceAsStream(relativePathForImportedDevices);
         for (ListBlobItem blobItem : storageBA.getContainer().listBlobs()) {
             if (blobItem instanceof CloudBlob) {
                 CloudBlob blob = (CloudBlob) blobItem;
@@ -199,15 +207,13 @@ public class DeviceManagementBA {
         LOGGER.info("Registering devices from blob to iothub : {}", iotHubName);
 
         // Create and start the import job
-        RegistryClient registryClient = new RegistryClient(iotHubConnectionString);
         String containerSasUri = storageBA.getContainerSasUri();
         RegistryJob importJob = registryClient.importDevices(containerSasUri, containerSasUri);
 
         // Waiting for the import job to complete
         while (true) {
             importJob = registryClient.getJob(importJob.getJobId());
-            if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED
-                    || importJob.getStatus() == RegistryJob.JobStatus.FAILED) {
+            if (importJob.getStatus() == RegistryJob.JobStatus.COMPLETED || importJob.getStatus() == RegistryJob.JobStatus.FAILED) {
                 break;
             }
             Thread.sleep(500);

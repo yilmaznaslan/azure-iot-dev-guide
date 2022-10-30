@@ -5,10 +5,6 @@ import io.dropwizard.setup.Environment;
 import org.example.azure.config.DefaultConfiguration;
 import org.example.azure.services.iotHub.devicemanagement.business.DeviceManagementBA;
 import org.example.azure.services.iotHub.devicemanagement.service.DeviceManagementService;
-import org.example.azure.services.iotHub.loadTest.business.LoadTestBA;
-import org.example.azure.services.iotHub.loadTest.service.LoadTestResource;
-import org.example.azure.services.iotHub.simulator.DeviceBA;
-import org.example.azure.services.iotHub.simulator.DeviceSimulatorResource;
 import org.example.azure.services.storage.business.StorageBA;
 
 public class MainApplication extends Application<DefaultConfiguration> {
@@ -26,20 +22,15 @@ public class MainApplication extends Application<DefaultConfiguration> {
     @Override
     public void run(DefaultConfiguration configuration, Environment environment) {
 
+        // Create Business Components
         StorageBA storageBA = new StorageBA(STORAGE_ACCOUNT_CONNECTION_STRING);
         DeviceManagementBA deviceManagementBA = new DeviceManagementBA(storageBA, IOTHUB_CONNECTION_STRING);
-        DeviceBA deviceBA = new DeviceBA();
-        LoadTestBA loadTestBA = new LoadTestBA(IOTHUB_CONNECTION_STRING);
 
         // Create resources
-        DeviceSimulatorResource deviceSimulatorResource = new DeviceSimulatorResource(deviceBA);
         DeviceManagementService deviceManagementService = new DeviceManagementService(deviceManagementBA);
-        LoadTestResource loadTestResource = new LoadTestResource(loadTestBA);
 
         // Register resources
-        environment.jersey().register(deviceSimulatorResource);
         environment.jersey().register(deviceManagementService);
-        environment.jersey().register(loadTestResource);
     }
 
 
