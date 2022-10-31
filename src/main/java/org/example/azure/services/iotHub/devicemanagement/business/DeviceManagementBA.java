@@ -25,23 +25,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Map;
 
 
 public class DeviceManagementBA {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(DeviceManagementBA.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeviceManagementBA.class);
 
     public String relativePathForImportedDevices = "org/example/azure/iotHub/DeviceManager/exportedDevices.json";
     private static final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
-    private static boolean excludeKeys = false;
-    private static String importBlobName = "devices.txt";
+    private static final boolean excludeKeys = false;
+    private static final String importBlobName = "devices.txt";
 
     private final QueryClient queryClient;
     private final RegistryClient registryClient;
     private final TwinClient twinClient;
     private final StorageBA storageBA;
-    private final String GET_ALL_DEVICES = "SELECT * FROM devices";
-    private final String GET_DEVICE_BY_DEVICEID = "SELECT * FROM devices WHERE deviceId='%s'";
+    private final Map<String, Twin> twinMap = new HashMap<>();
 
     public DeviceManagementBA(StorageBA storageBA, String iotHubConnectionString) {
         this.storageBA = storageBA;
@@ -50,33 +50,37 @@ public class DeviceManagementBA {
         this.twinClient = new TwinClient(iotHubConnectionString);
     }
 
-    public HashMap<String, Twin> getDeviceTwins() throws IOException, IotHubException {
+    public Map<String, Twin> getDeviceTwins() throws IOException, IotHubException {
         LOGGER.info("Getting all device twins");
+        String GET_ALL_DEVICES = "SELECT * FROM devices";
         TwinQueryResponse response = queryClient.queryTwins(GET_ALL_DEVICES);
-        HashMap<String, Twin> twins = new HashMap<>();
         while (response.hasNext()) {
             Twin twin = response.next();
             LOGGER.info("Getting deviceId: {}", twin.getDeviceId());
-            twins.put(twin.getDeviceId(), twin);
+            twinMap.put(twin.getDeviceId(), twin);
         }
-        return twins;
+        return twinMap;
     }
 
     public Twin getDeviceTwinByDeviceId(String deviceId) throws IOException, IotHubException {
         LOGGER.info("Getting deviceTwin: {}", deviceId);
+        String GET_DEVICE_BY_DEVICEID = "SELECT * FROM devices WHERE deviceId='%s'";
         LOGGER.info(String.format(GET_DEVICE_BY_DEVICEID, deviceId));
+        if (twinMap.containsKey(deviceId)){
+            return twinMap.get(deviceId);
+        }
         TwinQueryResponse response = queryClient.queryTwins(String.format(GET_DEVICE_BY_DEVICEID, deviceId));
         if (response.hasNext()) {
             Twin twin = response.next();
+            twinMap.put(deviceId, twin);
             return twin;
         }
         throw new NotFoundException("Requested device not found");
 
     }
 
-    public void deleteDeviceTwins() throws IOException, IotHubException {
-        HashMap<String, Twin> devices = getDeviceTwins();
-        devices.forEach((k, v) -> {
+    public void deleteDeviceTwins() {
+        twinMap.forEach((k, v) -> {
             try {
                 registryClient.removeDevice(k);
                 LOGGER.info("Deleting deviceId: {}", k);
@@ -102,7 +106,7 @@ public class DeviceManagementBA {
             device = registryClient.addDevice(device);
             LOGGER.info("Device created: " + device.getDeviceId());
             LOGGER.info("Device key: " + device.getPrimaryKey());
-            HashMap<String, String> tags = new HashMap<String, String>();
+            HashMap<String, String> tags = new HashMap<>();
             tags.put("countery", "germany");
             patchDeviceTwin(device.getDeviceId());
 
@@ -238,4 +242,8 @@ public class DeviceManagementBA {
 
     }
 
+    public String getDeviceConnectionStringByDeviceId(String deviceId) throws IOException, IotHubException {
+        Device device = registryClient.getDevice(deviceId);
+        return device.getPrimaryKey();
+    }
 }

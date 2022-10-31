@@ -7,6 +7,7 @@ import org.example.azure.services.iotHub.devicemanagement.business.DeviceManagem
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.util.HashMap;
+import java.util.Map;
 
 @Path("iothub/{iotHubName}/devices")
 @Produces(MediaType.APPLICATION_JSON)
@@ -29,14 +30,14 @@ public class DeviceManagementService {
 
     //@POST
     @Timed
-    public void registerSingleDevice(@QueryParam("deviceId") String deviceId) throws Exception {
+    public void registerSingleDevice(@QueryParam("deviceId") String deviceId)  {
         deviceManagementBA.registerSingleDevice(deviceId);
     }
 
 
     @GET
     @Timed
-    public HashMap<String, Twin> getDevices(@PathParam("iotHubName") String iotHubName) throws Exception {
+    public Map<String, Twin> getDevices(@PathParam("iotHubName") String iotHubName) throws Exception {
         //deviceManagementBA.getDevicesFromIotHubToBlob(iotHubName);
         return deviceManagementBA.getDeviceTwins();
     }
@@ -49,9 +50,17 @@ public class DeviceManagementService {
         return deviceManagementBA.getDeviceTwinByDeviceId(deviceId);
     }
 
+    @GET
+    @Timed
+    @Path("/{deviceId}/connectionString")
+    public String getDeviceConnectionString(@PathParam("deviceId") String deviceId,
+                                        @PathParam("iotHubName") String iotHubName) throws Exception {
+        return deviceManagementBA.getDeviceConnectionStringByDeviceId(deviceId);
+    }
+
     @DELETE
     @Timed
-    public void deleteDevices(@PathParam("iotHubName") String iotHubName) throws Exception {
+    public void deleteDevices(@PathParam("iotHubName") String iotHubName) {
         deviceManagementBA.deleteDeviceTwins();
     }
 }
